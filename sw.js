@@ -1,5 +1,5 @@
 /* Water Benders IITH – Service Worker */
-const CACHE = 'waterbenders-v1';
+const CACHE = 'waterbenders-v2';
 const PRECACHE = [
   './',
   './index.html',
