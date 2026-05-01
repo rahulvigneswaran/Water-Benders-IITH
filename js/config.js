@@ -6,7 +6,7 @@
  */
 const CONFIG = {
   // ← Paste your Google Apps Script web app URL here
-  APPS_SCRIPT_URL: 'YOUR_APPS_SCRIPT_URL_HERE',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwy2A2BNVYQbuO3emeCL7m9u-ecH-9TxtEATn-nvB2yVskGfkp8CR7Vt3KAbsu1DE1j_A/exec',
 
   APP_NAME: 'Water Benders IITH',
 
