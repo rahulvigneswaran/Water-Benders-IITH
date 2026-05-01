@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0ea5e9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Water Benders">
+  <meta name="description" content="Track dog water bowls at IIT Hyderabad">
+  <title>Water Benders · IITH</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.svg">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ── Setup Screen ─────────────────────────────── -->
+  <div id="setup-screen" class="fullscreen-overlay hidden">
+    <div class="setup-card">
+      <div class="setup-icon">💧</div>
+      <h1>Water Benders</h1>
+      <p class="setup-sub">IITH Campus Dog Water Tracker</p>
+      <div class="setup-alert">
+        <strong>Setup Required</strong>
+        <p>The Google Apps Script URL is not configured. Follow <code>SETUP.md</code> to deploy the backend, then update <code>js/config.js</code> with your script URL.</p>
+      </div>
+      <a href="SETUP.md" class="btn btn-primary" target="_blank">View Setup Guide</a>
+    </div>
+  </div>
+
+  <!-- ── Loading Screen ───────────────────────────── -->
+  <div id="loading-screen" class="fullscreen-overlay">
+    <div class="loading-content">
+      <div class="loading-drop">💧</div>
+      <div class="loading-spinner"></div>
+      <p>Loading bowls…</p>
+    </div>
+  </div>
+
+  <!-- ── App Shell ─────────────────────────────────── -->
+  <div id="app" class="hidden">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-icon">💧</span>
+        <div>
+          <div class="brand-name">Water Benders</div>
+          <div class="brand-sub">IITH</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="notif-btn" title="Enable notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="notif-dot hidden" id="notif-dot"></span>
+        </button>
+        <button class="icon-btn" id="admin-btn" title="Admin">
+          <svg id="admin-icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <svg id="admin-icon-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Alert Banner -->
+    <div id="alert-banner" class="alert-banner hidden">
+      <span id="alert-banner-text"></span>
+      <button id="alert-banner-close">✕</button>
+    </div>
+
+    <!-- Main Views -->
+    <main class="app-main">
+
+      <!-- Map View -->
+      <div id="view-map" class="view active">
+        <div id="map"></div>
+        <div class="map-legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Fresh</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Getting dry</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Needs water</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#94a3b8"></span>Unknown</div>
+        </div>
+      </div>
+
+      <!-- List View -->
+      <div id="view-list" class="view">
+        <div class="list-toolbar">
+          <div class="list-stats" id="list-stats">0 bowls</div>
+          <div class="list-filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="red">Urgent</button>
+            <button class="filter-btn" data-filter="green">Fresh</button>
+          </div>
+        </div>
+        <div id="bowls-grid" class="bowls-grid"></div>
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon">🐾</div>
+          <h3>No bowls yet</h3>
+          <p>Add the first water bowl to get started</p>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+        <span>Map</span>
+      </button>
+      <button class="nav-btn" data-view="list">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span>Bowls</span>
+      </button>
+      <button class="nav-btn admin-only hidden" id="add-bowl-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Add Bowl</span>
+      </button>
+    </nav>
+
+  </div><!-- /#app -->
+
+
+  <!-- ════════════════════════════════════════════
+       MODALS
+  ════════════════════════════════════════════ -->
+
+  <!-- Bowl Detail Modal -->
+  <div id="bowl-detail-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="bowl-detail-modal"></div>
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+
+      <!-- Hero Photo -->
+      <div class="bowl-hero" id="detail-hero">
+        <img id="detail-photo" src="" alt="" class="hidden">
+        <div id="detail-photo-placeholder" class="photo-placeholder">🐶</div>
+        <div class="bowl-hero-status" id="detail-status-badge"></div>
+        <button class="modal-close-btn" data-close="bowl-detail-modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-header">
+          <h2 id="detail-name"></h2>
+          <div class="detail-location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span id="detail-location"></span>
+          </div>
+        </div>
+
+        <!-- Timer Card -->
+        <div class="timer-card" id="detail-timer-card">
+          <div class="timer-row">
+            <div class="timer-label">Last filled</div>
+            <div class="timer-value" id="detail-last-filled">—</div>
+          </div>
+          <div class="timer-progress-wrap">
+            <div class="timer-progress-bg">
+              <div class="timer-progress-fill" id="detail-progress"></div>
+            </div>
+          </div>
+          <div class="timer-row">
+            <div class="timer-countdown" id="detail-countdown"></div>
+            <div class="timer-interval">Every <strong id="detail-interval"></strong>h</div>
+          </div>
+        </div>
+
+        <!-- Fill Button -->
+        <button class="fill-btn" id="fill-it-btn">
+          <span>💧</span> I Filled It!
+        </button>
+
+        <!-- Water Benders Section -->
+        <div class="section">
+          <div class="section-header">
+            <h3>Water Benders</h3>
+            <button class="section-action admin-only hidden" id="add-bender-btn">+ Add</button>
+          </div>
+          <div id="benders-list" class="benders-list">
+            <p class="muted-text" id="no-benders-msg">No volunteers assigned yet</p>
+          </div>
+        </div>
+
+        <!-- Fill History -->
+        <div class="section">
+          <div class="section-header">
+            <h3>Fill History</h3>
+            <button class="section-action" id="toggle-history-btn">Show</button>
+          </div>
+          <div id="history-list" class="history-list hidden"></div>
+        </div>
+
+        <!-- Admin Actions -->
+        <div class="admin-actions admin-only hidden" id="bowl-admin-actions">
+          <button class="btn btn-outline" id="edit-bowl-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit Bowl
+          </button>
+          <button class="btn btn-danger" id="delete-bowl-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            Delete
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Fill Bowl Modal -->
+  <div id="fill-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="fill-modal"></div>
+    <div class="modal-sheet modal-sheet--sm">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-body">
+        <h2 class="modal-title">💧 Filling the bowl?</h2>
+        <p class="modal-subtitle">You're awesome! Who are you?</p>
+        <div class="form-group">
+          <label class="form-label">Your name (optional)</label>
+          <input type="text" id="fill-name-input" class="form-input" placeholder="e.g. Rahul" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <input type="text" id="fill-notes-input" class="form-input" placeholder="e.g. Changed water too" maxlength="100">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" data-close="fill-modal">Cancel</button>
+          <button class="btn btn-primary btn-fill-confirm" id="fill-confirm-btn">Confirm Fill 💧</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Bowl Modal -->
+  <div id="bowl-form-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="bowl-form-modal"></div>
+    <div class="modal-sheet modal-sheet--full">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-body">
+        <h2 class="modal-title" id="bowl-form-title">Add Water Bowl</h2>
+
+        <!-- Photo Upload -->
+        <div class="photo-upload-wrap">
+          <div class="photo-upload" id="photo-upload-area">
+            <div id="photo-preview-container" class="hidden">
+              <img id="photo-preview" src="" alt="Preview">
+              <button class="photo-remove-btn" id="photo-remove-btn">✕</button>
+            </div>
+            <div id="photo-upload-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Tap to add photo</span>
+            </div>
+          </div>
+          <input type="file" id="photo-file-input" accept="image/*" capture="environment" class="hidden">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Bowl Name <span class="required">*</span></label>
+          <input type="text" id="bowl-name-input" class="form-input" placeholder="e.g. Library Entrance Bowl" maxlength="60" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Location Description</label>
+          <input type="text" id="bowl-location-input" class="form-input" placeholder="e.g. Near the main library entrance" maxlength="100">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Pin Location on Map <span class="required">*</span></label>
+          <div id="bowl-map-picker" class="map-picker">
+            <div class="map-picker-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Tap map to set pin • Drag pin to adjust
+            </div>
+          </div>
+          <div id="location-coords" class="coords-display hidden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span id="coords-text"></span>
+          </div>
+          <button class="btn btn-outline btn-sm" id="use-my-location-btn" style="margin-top:8px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            Use my location
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Refill Timer: <strong id="timer-value-display">8h</strong></label>
+          <input type="range" id="timer-slider" class="form-range" min="1" max="48" value="8" step="1">
+          <div class="range-labels">
+            <span>1h</span><span>12h</span><span>24h</span><span>48h</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <textarea id="bowl-notes-input" class="form-input form-textarea" placeholder="Any extra info about this bowl…" maxlength="200" rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Your name</label>
+          <input type="text" id="bowl-added-by-input" class="form-input" placeholder="Who's adding this?" maxlength="50">
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-ghost" data-close="bowl-form-modal">Cancel</button>
+          <button class="btn btn-primary" id="bowl-form-submit-btn">
+            <span id="bowl-form-submit-text">Add Bowl</span>
+            <span id="bowl-form-loading" class="btn-spinner hidden"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="admin-modal"></div>
+    <div class="modal-sheet modal-sheet--sm">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-body">
+        <h2 class="modal-title">🔐 Admin Access</h2>
+        <p class="modal-subtitle">Enter the admin passcode to manage bowls</p>
+        <div class="form-group">
+          <label class="form-label">Passcode</label>
+          <input type="password" id="admin-passcode-input" class="form-input" placeholder="Enter passcode" maxlength="50">
+          <p class="form-error hidden" id="admin-error">Incorrect passcode. Try again.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" data-close="admin-modal">Cancel</button>
+          <button class="btn btn-primary" id="admin-login-btn">Unlock</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Water Bender Modal -->
+  <div id="bender-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="bender-modal"></div>
+    <div class="modal-sheet modal-sheet--sm">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-body">
+        <h2 class="modal-title">🌊 Add Water Bender</h2>
+        <p class="modal-subtitle">Add a volunteer responsible for this bowl</p>
+        <div class="form-group">
+          <label class="form-label">Name <span class="required">*</span></label>
+          <input type="text" id="bender-name-input" class="form-input" placeholder="Volunteer's name" maxlength="50" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone number (optional)</label>
+          <input type="tel" id="bender-phone-input" class="form-input" placeholder="+91 99999 99999" maxlength="20">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" data-close="bender-modal">Cancel</button>
+          <button class="btn btn-primary" id="bender-submit-btn">Add Bender</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPeM=" crossorigin=""></script>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
