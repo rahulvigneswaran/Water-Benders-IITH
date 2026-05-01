@@ -8,20 +8,30 @@
 const API = (() => {
   const url = () => CONFIG.APPS_SCRIPT_URL;
 
+  // Prevents a hung fetch from blocking the UI forever
+  function withTimeout(promise, ms = 15000) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Request timed out after ${ms / 1000}s`)), ms)
+      ),
+    ]);
+  }
+
   async function get(action, params = {}) {
     const qs = new URLSearchParams({ action, ...params });
-    const res = await fetch(`${url()}?${qs}`, { redirect: 'follow' });
+    const res = await withTimeout(fetch(`${url()}?${qs}`, { redirect: 'follow' }));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
 
   async function post(data) {
-    const res = await fetch(url(), {
+    const res = await withTimeout(fetch(url(), {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(data),
-    });
+    }));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
