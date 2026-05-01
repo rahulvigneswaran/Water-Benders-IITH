@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#0ea5e9"/>
+  <!-- Water drop -->
+  <path d="M256 100 C256 100 160 220 160 310 C160 362 203 404 256 404 C309 404 352 362 352 310 C352 220 256 100 256 100 Z" fill="white" opacity="0.95"/>
+  <!-- Paw prints inside drop -->
+  <circle cx="228" cy="290" r="14" fill="#0ea5e9"/>
+  <circle cx="284" cy="290" r="14" fill="#0ea5e9"/>
+  <circle cx="210" cy="258" r="10" fill="#0ea5e9"/>
+  <circle cx="256" cy="250" r="10" fill="#0ea5e9"/>
+  <circle cx="302" cy="258" r="10" fill="#0ea5e9"/>
+  <!-- Shine -->
+  <ellipse cx="222" cy="210" rx="18" ry="28" fill="white" opacity="0.35" transform="rotate(-15 222 210)"/>
+</svg>
