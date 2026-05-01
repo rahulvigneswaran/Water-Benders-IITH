@@ -905,30 +905,30 @@ async function init() {
     return;
   }
 
-  // Register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
   wireEvents();
-  initMap();
 
-  // Load data
   try {
-    await API.ping();
     await loadBowls();
-  } catch (err) {
-    showToast('Cannot connect to backend. Check APPS_SCRIPT_URL in config.js', 'error');
-  }
-
-  $('loading-screen').classList.add('hidden');
-  $('app').classList.remove('hidden');
-  startRefreshTimer();
-
-  // Check notification permission state
-  if (Notification.permission === 'granted') {
-    state.notificationsEnabled = true;
-    $('notif-btn').style.color = '#0ea5e9';
+  } catch {
+    // loadBowls() surfaces its own toast; nothing more to do here
+  } finally {
+    // Always reveal the app — even if the API call timed out or failed.
+    // initMap() is intentionally placed here so Leaflet can measure the
+    // container once it's visible (calling it on a display:none element
+    // gives it 0×0 dimensions and no tiles render).
+    $('loading-screen').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    initMap();
+    renderMapMarkers(); // first call inside loadBowls() returned early (map wasn't ready)
+    startRefreshTimer();
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      state.notificationsEnabled = true;
+      $('notif-btn').style.color = '#0ea5e9';
+    }
   }
 }
 
