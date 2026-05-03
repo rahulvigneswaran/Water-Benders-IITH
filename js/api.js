@@ -8,7 +8,34 @@
 const API = (() => {
   const url = () => CONFIG.APPS_SCRIPT_URL;
 
-  // Prevents a hung fetch from blocking the UI forever
+  // GET via JSONP – injects a <script> tag so there are zero CORS restrictions.
+  // Works universally with Google Apps Script deployments.
+  function get(action, params = {}) {
+    return new Promise((resolve, reject) => {
+      const cb = `_wb${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const script = document.createElement('script');
+
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Request timed out after 15 s'));
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(timer);
+        delete window[cb];
+        script.remove();
+      }
+
+      window[cb] = (data) => { cleanup(); resolve(data); };
+      script.onerror = () => { cleanup(); reject(new Error('Failed to reach Apps Script')); };
+
+      const qs = new URLSearchParams({ action, ...params, callback: cb });
+      script.src = `${url()}?${qs}`;
+      document.head.appendChild(script);
+    });
+  }
+
+  // POST via fetch with Content-Type: text/plain to avoid a CORS preflight.
   function withTimeout(promise, ms = 15000) {
     return Promise.race([
       promise,
@@ -16,13 +43,6 @@ const API = (() => {
         setTimeout(() => reject(new Error(`Request timed out after ${ms / 1000}s`)), ms)
       ),
     ]);
-  }
-
-  async function get(action, params = {}) {
-    const qs = new URLSearchParams({ action, ...params });
-    const res = await withTimeout(fetch(`${url()}?${qs}`, { redirect: 'follow' }));
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
   }
 
   async function post(data) {

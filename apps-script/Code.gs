@@ -27,20 +27,30 @@ const SETTING_COLS = ['key','value'];
 // ── Routing ────────────────────────────────────────────
 
 function doGet(e) {
+  const params = e.parameter || {};
+  let result;
   try {
-    const action = (e.parameter || {}).action;
-    let result;
-    switch (action) {
+    switch (params.action) {
       case 'ping':       result = { status: 'ok', ts: new Date().toISOString() }; break;
       case 'getBowls':   result = getBowls(); break;
-      case 'getBenders': result = getBenders(e.parameter.bowlId); break;
-      case 'getHistory': result = getHistory(e.parameter.bowlId, parseInt(e.parameter.limit) || 10); break;
+      case 'getBenders': result = getBenders(params.bowlId); break;
+      case 'getHistory': result = getHistory(params.bowlId, parseInt(params.limit) || 10); break;
       default:           result = { error: 'Unknown action' };
     }
-    return respond(result);
   } catch (err) {
-    return respond({ error: err.message });
+    result = { error: err.message };
   }
+
+  const json = JSON.stringify(result);
+
+  // JSONP: if a callback name is provided, wrap the response so a <script>
+  // tag can receive it without any CORS restrictions.
+  if (params.callback) {
+    return ContentService
+      .createTextOutput(`${params.callback}(${json})`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
